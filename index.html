@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Workers notes</title>
+</head>
+<body>
+
+
+<h1>Web Workers Lightning Talks, JSLou</h1>
+
+<h3>What</h3>
+
+API to start separate JS process in the browser, and send messages between processes.
+
+<h3>Take aways</h3>
+<ul>
+    <li>can only pass data to and from worker: strings, numbers, object literals, ...(~ JSON.stringify)</li>
+    <li>a worker does not have access to the DOM (window, document)</li>
+    <li>messages arrive in the order that they are posted</li>
+    <li>workers have their own memory space (ie. cannot access any memory from other threads(some exceptions)</li>
+    <li>workers are long lived (spawn only a few)</li>
+    <li>can import external scripts with <code>importScript</code></li>
+    <li>.... and much much more</li>
+</ul>
+
+<h2>Example:</h2>
+<p>
+    <input type="button" value="Load big file on UI thread" id="submit"><span id="result"></span>
+</p>
+
+<p>
+    <input type="button" value="Load big file with web worker" id="submitWorker"><span id="resultWorker"></span>
+</p>
+
+<h2>API</h2>
+
+<h3>In the client</h3>
+<pre>
+    var worker = new Worker('myScript.js');
+    worker.addEventListener('message', function(event){
+        console.log('received data', event.data);
+    
+    });
+    worker.postMessage('foo');
+    worker.postMessage({bar:'foo'});
+
+    ...
+
+    worker.terminate();
+</pre>
+
+<h3>In the worker</h3>
+<pre>
+    self.addEventListener('message', function(nevent){
+        console.log('received data', event.data);
+        self.postMessage({/*some response*/});
+    });
+</pre>
+
+
+
+<h3>When to use workers</h3>
+<ul>
+<li>loading large files</li>
+<li>operations with crufty memory alloaction to avoid garbage collection interruptions on UI thread</li>
+<li>long running numerical operations</li>
+</ul>
+
+
+
+<script src="ajax.js"></script>
+<script src="frametime.js"></script>
+<script>
+
+
+    (function () {
+
+        //on UI thread
+        document.getElementById('submit').addEventListener("click", event => {
+            document.getElementById("result").innerHTML = "";
+            ajax
+                    .get("citylots.json")
+                    .then(function (text) {
+                        const json = JSON.parse(text);
+                        document.getElementById("result").innerHTML = `text length: ${text.length}; features: ${json.features.length}`;
+                    });
+        });
+
+
+        //on UI thread
+        const worker = new Worker("file_worker.js");
+        document.getElementById('submitWorker').addEventListener("click", event => {
+
+            document.getElementById("resultWorker").innerHTML = "";
+            worker.addEventListener("message", event => {
+                document.getElementById("resultWorker").innerHTML = `text length: ${event.data.textLength}; features: ${event.data.featureLength}`;
+            });
+
+            worker.postMessage({
+                file: "citylots.json"
+            });
+
+
+        });
+
+
+    }());
+
+
+</script>
+
+<h3>more</h3>
+<ul>
+    <li><a href="http://www.w3schools.com/html/html5_webworkers.asp">http://www.w3schools.com/html/html5_webworkers.asp</a></li>
+    <li><a href="https://www.w3.org/TR/workers/">https://www.w3.org/TR/workers/</a></li>
+</ul>
+
+
+</body>
+</html>
